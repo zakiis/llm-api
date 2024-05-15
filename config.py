@@ -1,7 +1,9 @@
 import os
 import logging.config
+import dotenv
 
 DEFAULTS = {
+    'LLM_ENGIN': 'huggingface',  # huggingface, modelscope, vllm
     'LOG_LEVEL': 'INFO',
     'LOG_FILE': '',
     'LOG_FORMAT': '%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s',
@@ -9,6 +11,7 @@ DEFAULTS = {
                          'client_addr)s "%(request_line)s" %(status_code)s',
     'LOG_DATEFORMAT': '%Y-%m-%d %H:%M:%S',
 }
+dotenv.load_dotenv()
 
 
 def get_env(key: str) -> str:
