@@ -119,13 +119,13 @@ class DefaultEngine(ABC):
         """ Check whether to need to construct prompts or inputs. """
         self.construct_prompt = self.prompt_name is not None
         if "chatglm3" in self.model_name:
-            logger.info("Using ChatGLM3 Model for Chat!")
+            logging.info("Using ChatGLM3 Model for Chat!")
         elif check_is_baichuan(self.model):
-            logger.info("Using Baichuan Model for Chat!")
+            logging.info("Using Baichuan Model for Chat!")
         elif check_is_qwen(self.model):
-            logger.info("Using Qwen Model for Chat!")
+            logging.info("Using Qwen Model for Chat!")
         elif check_is_xverse(self.model):
-            logger.info("Using Xverse Model for Chat!")
+            logging.info("Using Xverse Model for Chat!")
         else:
             self.construct_prompt = True
 
@@ -134,7 +134,7 @@ class DefaultEngine(ABC):
         Fix the tokenizer by adding the end-of-sequence (eos) token
         and the padding (pad) token if they are missing.
         """
-        from api.adapter.patcher import patch_tokenizer
+        from .patcher import patch_tokenizer
 
         patch_tokenizer(self.tokenizer)
 
@@ -206,7 +206,7 @@ class DefaultEngine(ABC):
                 messages, functions, tools=tools,
             )
             if functions or tools:
-                logger.debug(f"==== Messages with tools ====\n{messages}")
+                logging.debug(f"==== Messages with tools ====\n{messages}")
 
         if self.construct_prompt:
             if getattr(self.tokenizer, "chat_template", None) and not self.prompt_name:
@@ -416,7 +416,7 @@ class DefaultEngine(ABC):
                     )
                 except Exception as e:
                     traceback.print_exc()
-                    logger.warning("Failed to parse tool call")
+                    logging.warning("Failed to parse tool call")
 
             if isinstance(function_call, dict) and "arguments" in function_call:
                 has_function_call = True
@@ -492,7 +492,7 @@ class DefaultEngine(ABC):
                 last_output["text"] = res
             except Exception as e:
                 traceback.print_exc()
-                logger.warning("Failed to parse tool call")
+                logging.warning("Failed to parse tool call")
 
         if isinstance(function_call, dict) and "arguments" in function_call:
             finish_reason = "function_call"

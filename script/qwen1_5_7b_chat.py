@@ -1,4 +1,5 @@
 import time
+import uuid
 
 from fastapi import FastAPI
 import uvicorn
@@ -9,14 +10,24 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.completion_usage import CompletionUsage
+from modelscope import AutoModelForCausalLM, AutoTokenizer
 
 from _types import ChatCompletionCreateParams
 
 app = FastAPI()
+# load model
 
+device = "cuda" # the device to load the model onto
+model = AutoModelForCausalLM.from_pretrained(
+    "qwen/Qwen1.5-7B-Chat",
+    device_map="auto"
+)
+tokenizer = AutoTokenizer.from_pretrained("qwen/Qwen1.5-7B-Chat")
 
 @app.post("/v1/chat/completions")
 async def chat_completion(request: ChatCompletionCreateParams):
+    request_id = f"cmpl-{str(uuid.uuid4().hex)}"
+    created_time = int(time.time())
     request.max_tokens = request.max_tokens or 1024
     if request.stream:
         pass
@@ -39,10 +50,10 @@ async def chat_completion(request: ChatCompletionCreateParams):
             total_tokens=33,
         )
         return ChatCompletion(
-            id="12-232-2323",
+            id=request_id,
             choices=choices,
             model=request.model,
-            created=int(time.time()),
+            created=created_time,
             object="chat.completion",
             usage=usage,
         )

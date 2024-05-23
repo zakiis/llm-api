@@ -1,9 +1,12 @@
 import os
 import logging.config
+from typing import Optional, Dict, List, Union
+
 import dotenv
+from pydantic import BaseModel, Field
 
 DEFAULTS = {
-    'LLM_ENGIN': 'huggingface',  # huggingface, modelscope, vllm
+    'LLM_ENGIN': 'huggingface',  # transformers, vllm
     'LOG_LEVEL': 'INFO',
     'LOG_FILE': '',
     'LOG_FORMAT': '%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s',
@@ -23,6 +26,7 @@ def get_bool_env(key) -> bool:
     return value.lower() == 'true' if value is not None else False
 
 
+# 日志配置
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -87,3 +91,126 @@ def __initialize_logging():
 
 
 __initialize_logging()
+
+# 模型设置
+ENGINE = get_env("ENGINE", "huggingface").lower()
+TASKS = get_env("TASKS", "llm").lower().split(",")  # llm, rag
+
+class BaseSettings(BaseModel):
+    """ Settings class. """
+    host: Optional[str] = Field(
+        default=get_env("HOST", "0.0.0.0"),
+        description="Listen address.",
+    )
+    port: Optional[int] = Field(
+        default=int(get_env("PORT", 8000)),
+        description="Listen port.",
+    )
+    api_prefix: Optional[str] = Field(
+        default=get_env("API_PREFIX", "/v1"),
+        description="API prefix.",
+    )
+    engine: Optional[str] = Field(
+        default=ENGINE,
+        description="Choices are ['default', 'vllm', 'llama.cpp', 'tgi'].",
+    )
+    tasks: Optional[List[str]] = Field(
+        default=list(TASKS),
+        description="Choices are ['llm', 'rag'].",
+    )
+    # device related
+    device_map: Optional[Union[str, Dict]] = Field(
+        default=get_env("DEVICE_MAP", "auto"),
+        description="Device map to load the model."
+    )
+    gpus: Optional[str] = Field(
+        default=get_env("GPUS", None),
+        description="Specify which gpus to load the model."
+    )
+    num_gpus: Optional[int] = Field(
+        default=int(get_env("NUM_GPUs", 1)),
+        ge=0,
+        description="How many gpus to load the model."
+    )
+    activate_inference: Optional[bool] = Field(
+        default=get_bool_env("ACTIVATE_INFERENCE", "true"),
+        description="Whether to activate inference."
+    )
+    model_names: Optional[List] = Field(
+        default_factory=list,
+        description="All available model names"
+    )
+    # support for api key check
+    api_keys: Optional[List[str]] = Field(
+        default=get_env("API_KEYS", "").split(",") if get_env("API_KEYS", "") else None,
+        description="Support for api key check."
+    )
+
+
+class LLMSettings(BaseModel):
+    # model related
+    model_name: Optional[str] = Field(
+        default=get_env("MODEL_NAME", None),
+        description="The name of the model to use for generating completions."
+    )
+    model_path: Optional[str] = Field(
+        default=get_env("MODEL_PATH", None),
+        description="The path to the model to use for generating completions."
+    )
+    dtype: Optional[str] = Field(
+        default=get_env("DTYPE", "half"),
+        description="Precision dtype."
+    )
+
+    # quantize related
+    load_in_8bit: Optional[bool] = Field(
+        default=get_bool_env("LOAD_IN_8BIT"),
+        description="Whether to load the model in 8 bit."
+    )
+    load_in_4bit: Optional[bool] = Field(
+        default=get_bool_env("LOAD_IN_4BIT"),
+        description="Whether to load the model in 4 bit."
+    )
+
+    # context related
+    context_length: Optional[int] = Field(
+        default=int(get_env("CONTEXT_LEN", -1)),
+        ge=-1,
+        description="Context length for generating completions."
+    )
+    chat_template: Optional[str] = Field(
+        default=get_env("PROMPT_NAME", None),
+        description="Chat template for generating completions."
+    )
+
+    rope_scaling: Optional[str] = Field(
+        default=get_env("ROPE_SCALING", None),
+        description="RoPE Scaling."
+    )
+    flash_attn: Optional[bool] = Field(
+        default=get_bool_env("FLASH_ATTN", "auto"),
+        description="Use flash attention."
+    )
+
+    # support for transformers.TextIteratorStreamer
+    use_streamer_v2: Optional[bool] = Field(
+        default=get_bool_env("USE_STREAMER_V2", "true"),
+        description="Support for transformers.TextIteratorStreamer."
+    )
+
+    interrupt_requests: Optional[bool] = Field(
+        default=get_bool_env("INTERRUPT_REQUESTS", "true"),
+        description="Whether to interrupt requests when a new request is received.",
+    )
+
+
+PARENT_CLASSES = [BaseSettings]
+if "llm" in TASKS:
+    if ENGINE == "default":
+        PARENT_CLASSES.append(LLMSettings)
+    elif ENGINE == "vllm":
+        PARENT_CLASSES.extend([LLMSettings, VLLMSetting])
+    elif ENGINE == "llama.cpp":
+        PARENT_CLASSES.extend([LLMSettings, LlamaCppSetting])
+    elif ENGINE == "tgi":
+        PARENT_CLASSES.extend([LLMSettings, TGISetting])

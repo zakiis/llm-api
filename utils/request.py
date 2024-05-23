@@ -18,10 +18,10 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from starlette.concurrency import iterate_in_threadpool
 
-from api.config import SETTINGS
-from api.utils.compat import jsonify, dictify
-from api.utils.constants import ErrorCode
-from api.utils.protocol import (
+from ..config import SETTINGS
+from .compat import jsonify, dictify
+from .constants import ErrorCode
+from .._types import (
     ChatCompletionCreateParams,
     CompletionCreateParams,
     ErrorResponse,
@@ -164,7 +164,7 @@ async def get_event_publisher(
             await inner_send_chan.send(dict(data="[DONE]"))
 
         except anyio.get_cancelled_exc_class() as e:
-            logger.info("disconnected")
+            logging.info("disconnected")
             with anyio.move_on_after(1, shield=True):
-                logger.info(f"Disconnected from client (via refresh/close) {request.client}")
+                logging.info(f"Disconnected from client (via refresh/close) {request.client}")
                 raise e

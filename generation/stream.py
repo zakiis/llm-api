@@ -16,8 +16,8 @@ from transformers import (
     PreTrainedTokenizer,
 )
 
-from api.generation.qwen import check_is_qwen
-from api.generation.utils import (
+from ..generation.qwen import check_is_qwen
+from ..generation.utils import (
     prepare_logits_processor,
     is_partial_stop,
     apply_stopping_strings,

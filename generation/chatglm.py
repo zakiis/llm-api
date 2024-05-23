@@ -97,7 +97,7 @@ def generate_stream_chatglm(
 
     input_echo_len = len(inputs["input_ids"][0])
     if input_echo_len >= model.config.seq_length:
-        loggingwarning(f"Input length larger than {model.config.seq_length}")
+        logging.warning(f"Input length larger than {model.config.seq_length}")
 
     inputs = {k: v[:, -model.config.seq_length:].to(model.device) for k, v in inputs.items()}
 
@@ -190,7 +190,7 @@ def generate_stream_chatglm_v3(
 
     input_echo_len = len(inputs["input_ids"][0])
     if input_echo_len >= model.config.seq_length:
-        loggingwarning(f"Input length larger than {model.config.seq_length}")
+        logging.warning(f"Input length larger than {model.config.seq_length}")
 
     inputs = {k: v[:, -model.config.seq_length:].to(model.device) for k, v in inputs.items()}
 
