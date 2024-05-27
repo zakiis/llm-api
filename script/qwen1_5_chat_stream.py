@@ -1,15 +1,16 @@
 import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from threading import Thread
-device = "cuda"  # the device to load the model onto
+# device = "cuda"  # the device to load the model onto
+device = "cpu"
 
 checkpoint_path = os.getenv('MODELSCOPE_CACHE') + "/qwen/Qwen1___5-7B-Chat"
 model = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen1.5-7B-Chat",
+    checkpoint_path,
     torch_dtype="auto",
     device_map="auto"
 )
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen1.5-7B-Chat")
+tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
 
 prompt = "Give me a short introduction to large language model."
 messages = [
@@ -24,4 +25,4 @@ thread = Thread(target=model.generate, kwargs=generation_kwargs)
 thread.start()
 
 for new_text in streamer:
-    print(new_text)
+    print(new_text, end='', flush=True)

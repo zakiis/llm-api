@@ -1,7 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# device = "cuda"  # the device to load the model onto
-device = "cpu"  # the device to load the model onto
+device = "cuda"  # the device to load the model onto
 
 # checkpoint_path = "Qwen/Qwen1.5-7B-Chat"
 checkpoint_path = r"D:\data\model\qwen\Qwen1___5-7B-Chat"
