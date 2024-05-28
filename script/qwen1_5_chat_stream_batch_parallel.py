@@ -1,15 +1,22 @@
 import os
+
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from threading import Thread
-# device = "cuda"  # the device to load the model onto
-device = "cpu"
 
+device = "cuda"  # the device to load the model onto
 checkpoint_path = os.getenv('MODELSCOPE_CACHE') + "/qwen/Qwen1___5-7B-Chat"
 model = AutoModelForCausalLM.from_pretrained(
     checkpoint_path,
     torch_dtype="auto",
     device_map="auto"
 ).eval()
+if torch.cuda.is_available():
+    num_gpus = torch.cuda.device_count()
+    if num_gpus > 1:
+        print(f"Found {num_gpus} GPUs, model is now parallelized.")
+        model = torch.nn.DataParallel(model)
+
 tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
 
 prompt = "Give me a short introduction to large language model."

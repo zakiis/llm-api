@@ -1,9 +1,11 @@
+import os
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 device = "cuda"  # the device to load the model onto
 
 # checkpoint_path = "Qwen/Qwen1.5-7B-Chat"
-checkpoint_path = r"D:\data\model\qwen\Qwen1___5-7B-Chat"
+checkpoint_path = os.getenv('MODELSCOPE_CACHE') + "/qwen/Qwen1___5-7B-Chat"
 model = AutoModelForCausalLM.from_pretrained(
     checkpoint_path,
     torch_dtype="auto",
@@ -20,7 +22,7 @@ text = tokenizer.apply_chat_template(
     messages,
     tokenize=False,
     add_generation_prompt=True
-)
+).eval()
 model_inputs = tokenizer([text], return_tensors="pt").to(device)
 
 generated_ids = model.generate(
