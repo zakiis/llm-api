@@ -38,35 +38,57 @@ async def send_request(session, payload, prompt_len):
             return {'error': response.status, 'message': await response.text()}
 
 
-async def benchmark(
-    input_requests: List[Tuple[str, int, int]],
-) -> None:
-    async with aiohttp.ClientSession() as session:
-        for idx, request in enumerate(input_requests):
-            prompt, prompt_len, output_len = request
-            payload = {
-                'model': MODEL_UID,
-                "n": 1,
-                "temperature": 0,
-                "top_p": 1.0,
-                'messages': [{"role": "user", "content": prompt}],
-                'max_tokens': 8192
-            }
-            response = await send_request(session, payload, prompt_len)
-            print(f"Response {idx + 1}: {json.dumps(response, ensure_ascii=False, indent=2)}")
+class BenchMarkRunner:
+
+    def __init__(
+        self,
+        requests: List[Tuple[str, int, int]],  # prompt, prompt_len, completion_len
+        concurrency: int,
+    ):
+        self.concurrency = concurrency
+        self.requests = requests
+        self.request_left = len(requests)
+        self.request_queue = asyncio.Queue(concurrency or 100)
+
+    async def run(self):
+        tasks = []
+        for i in range(self.concurrency):
+            tasks.append(asyncio.create_task(self.worker()))
+        for req in self.requests:
+            await self.request_queue.put(req)
+        # When all request is done, most worker will hang on self.request_queue, but at least one worker will exit
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+    async def worker(self):
+        timeout = aiohttp.ClientTimeout(total=5 * 60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            while self.request_left > 0:
+                prompt, prompt_len, completion_len = await self.request_queue.get()
+                payload = {
+                    'model': MODEL_UID,
+                    "n": 1,
+                    "temperature": 0,
+                    "top_p": 1.0,
+                    'messages': [{"role": "user", "content": prompt}],
+                    'max_tokens': 8192
+                }
+                response = await send_request(session, payload, prompt_len)
+                self.request_left -= 1
+                print(f"Response {len(self.requests) - self.request_left}: {json.dumps(response, ensure_ascii=False, indent=2)}")
 
 
 def main():
-    logger.info("Preparing for benchmark.")
     dataset_path = r'ShareGPT_V3_unfiltered_cleaned_split.json'
     tokenizer_name_or_path = 'qwen/Qwen1.5-7B-Chat'
-    num_request = 10
+    num_request = 100
+    concurrency = 10
+    logger.info("Preparing for benchmark.")
     tokenizer = get_tokenizer(tokenizer_name_or_path)
     input_requests = sample_requests(dataset_path, num_request, tokenizer)
 
     logger.info("Benchmark starts.")
     benchmark_start_time = time.time()
-    asyncio.run(benchmark(input_requests))
+    asyncio.run(BenchMarkRunner(input_requests, concurrency).run())
     benchmark_end_time = time.time()
     benchmark_time = benchmark_end_time - benchmark_start_time
 
@@ -85,6 +107,10 @@ def main():
         [latency / output_len for _, output_len, latency in REQUEST_LATENCY]
     )
     print("Average latency per output token: " f"{avg_per_output_token_latency:.2f} s")
+    throughput = (
+            sum([output_len for _, output_len, _ in REQUEST_LATENCY]) / benchmark_time
+    )
+    print(f"Throughput: {throughput} tokens/s")
 
 
 if __name__ == '__main__':
