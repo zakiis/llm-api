@@ -5,3 +5,4 @@ openai>=1.6.1
 transformers>=4.37.0
 bitsandbytes
 python-dotenv
+sse_starlette
