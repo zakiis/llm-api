@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 MODEL_PATH = 'THUDM/cogvlm2-llama3-chinese-chat-19B'
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 TORCH_TYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[
-        0] >= 8 else torch.float16
+    0] >= 8 else torch.float16
 
 
 @asynccontextmanager
@@ -166,7 +166,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
     )
     if request.stream:
         generate = predict(request.model, gen_params)
-        return EventSourceResponse(generate, media_type="text/event-stream")
+        return EventSourceResponse(generate, media_type="text/event-stream", sep="\n")
     response = generate_cogvlm(model, tokenizer, gen_params)
 
     usage = UsageInfo()
@@ -286,7 +286,7 @@ def process_history_and_images(messages: List[ChatMessageInput]) -> Tuple[
         else:
             assert False, f"unrecognized role: {role}"
 
-    return system_message + last_user_query, formatted_history, image_list
+    return system_message + ". USER: " + last_user_query + " ASSISTANT:", formatted_history, image_list
 
 
 @torch.inference_mode()
@@ -304,7 +304,8 @@ def generate_stream_cogvlm(model: AutoModelForCausalLM, tokenizer: AutoTokenizer
         'input_ids': input_by_model['input_ids'].unsqueeze(0).to(DEVICE),
         'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(DEVICE),
         'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(DEVICE),
-        'images': [[input_by_model['images'][0].to(DEVICE).to(TORCH_TYPE)] if len(input_by_model['images']) > 0 else []],
+        'images': [
+            [input_by_model['images'][0].to(DEVICE).to(TORCH_TYPE)] if len(input_by_model['images']) > 0 else []],
     }
     if 'cross_images' in input_by_model and input_by_model['cross_images']:
         inputs['cross_images'] = [[input_by_model['cross_images'][0].to(DEVICE).to(TORCH_TYPE)]]
@@ -365,6 +366,7 @@ torch.cuda.empty_cache()
 if __name__ == "__main__":
     # Argument parser
     import argparse
+
     parser = argparse.ArgumentParser(description="CogVLM2 OpenAPI Demo")
     parser.add_argument('--quant', type=int, choices=[4, 8], help='Enable 4-bit or 8-bit precision loading', default=0)
     args = parser.parse_args()
