@@ -402,5 +402,4 @@ if __name__ == "__main__":
             trust_remote_code=True,
             device_map='auto',
         ).eval()
-
     uvicorn.run(app, host='0.0.0.0', port=80, workers=1)
