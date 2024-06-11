@@ -76,14 +76,15 @@ class ToolCallResponse(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    role: Literal["user", "assistant", "system", "tool"]
+    role: Literal["user", "assistant", "system", "function", "tool"]
     content: str = None
     name: Optional[str] = None
+    function_call: Optional[FunctionCallResponse] = None
     tool_calls: Optional[List[ToolCallResponse]] = None
 
 
 class DeltaMessage(BaseModel):
-    role: Optional[Literal["user", "assistant", "system"]] = None
+    role: Optional[Literal["user", "assistant", "function", "system"]] = None
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallResponse]] = None
 
@@ -138,7 +139,6 @@ class ChatCompletionResponseStreamChoice(BaseModel):
 
 class ChatCompletionResponse(BaseModel):
     model: str
-
     id: str = Field(default_factory=lambda: generate_id('chatcmpl'))
     object: Literal["chat.completion", "chat.completion.chunk"]
     choices: List[Union[ChatCompletionResponseChoice, ChatCompletionResponseStreamChoice]]
@@ -261,7 +261,7 @@ def process_messages(messages, tools=None, tool_choice=None):
         )
 
     for m in _messages:
-        role, content, tool_calls = m.role, m.content, m.tool_calls
+        role, content, func_call = m.role, m.content, m.function_call
         if role == "function":
             messages.append(
                 {
@@ -269,16 +269,14 @@ def process_messages(messages, tools=None, tool_choice=None):
                     "content": content
                 }
             )
-        elif role == "assistant" and tool_calls is not None:
-            for response in content.split("<|assistant|>"):
-                first_tool_call = tool_calls[0]
-                messages.append(
-                    {
-                        "role": role,
-                        "metadata": first_tool_call.function.name,
-                        "content": first_tool_call.function.arguments
-                    }
-                )
+        elif role == "assistant" and func_call is not None:
+            messages.append(
+                {
+                    "role": role,
+                    "metadata": func_call.name,
+                    "content": func_call.arguments
+                }
+            )
         else:
             if role == "system" and msg_has_sys:
                 msg_has_sys = False
