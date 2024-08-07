@@ -86,6 +86,7 @@ def __initialize_logging():
             'formatter': 'access'
         }
         LOGGING_CONFIG['root']['handlers'] = ['console', 'file']
+        LOGGING_CONFIG['loggers']['uvicorn.access']['handlers'] = ['access', 'file_access']
     logging.config.dictConfig(LOGGING_CONFIG)
     logging_inited = True
 
